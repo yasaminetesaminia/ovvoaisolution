@@ -1,0 +1,28 @@
+{
+  "name": "@lavora/voice",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./prompts/lavora": "./src/prompts/lavora.ts",
+    "./tools": "./src/tools.ts",
+    "./vapi": "./src/vapi.ts"
+  },
+  "scripts": {
+    "sync:lavora": "dotenv -e ../../.env -- tsx scripts/sync-lavora.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@lavora/db": "workspace:*",
+    "@lavora/core": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^8.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

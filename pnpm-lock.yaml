@@ -102,6 +102,28 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  packages/voice:
+    dependencies:
+      '@lavora/core':
+        specifier: workspace:*
+        version: link:../core
+      '@lavora/db':
+        specifier: workspace:*
+        version: link:../db
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      dotenv-cli:
+        specifier: ^8.0.0
+        version: 8.0.0
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
 packages:
 
   '@esbuild/aix-ppc64@0.21.5':
