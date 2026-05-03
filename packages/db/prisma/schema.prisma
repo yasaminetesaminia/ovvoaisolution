@@ -1,0 +1,395 @@
+// Lavora Platform — Database schema
+//
+// Multi-tenant SaaS for AI clinic receptionists. Every operational table
+// carries a `clinicId` so cross-tenant data leakage is impossible by
+// construction. Authentication lives in Supabase auth.users; we only
+// store a foreign-key reference (authId) to it via the ClinicUser
+// pivot.
+//
+// Naming: snake_case in DB, camelCase in TS — Prisma's @map handles both.
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x", "linux-musl"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// Tenancy
+// ============================================================
+
+model Clinic {
+  id      String  @id @default(cuid())
+  slug    String  @unique // URL-safe handle, e.g. "lavora"
+  name    String
+  tagline String?
+
+  // Contact
+  phone   String?
+  email   String?
+  website String?
+
+  // Localisation / hours
+  addressEn    String?
+  addressAr    String?
+  timezone     String @default("Asia/Dubai")
+  currency     String @default("OMR")
+  closedDay    String @default("Friday") // ISO weekday name
+  workingStart String @default("09:00")
+  workingEnd   String @default("22:00")
+
+  // Voice integration (Vapi)
+  vapiAssistantId String? @map("vapi_assistant_id")
+  vapiPhoneId     String? @map("vapi_phone_id")
+  twilioNumber    String? @map("twilio_number")
+
+  // Voice profile — ElevenLabs voice ID this clinic uses
+  voiceId    String? @map("voice_id")
+  voiceModel String  @default("eleven_turbo_v2_5") @map("voice_model")
+
+  // Calendar sync (encrypted at the application layer before storage)
+  gcalCalendarId   String? @map("gcal_calendar_id")
+  gcalRefreshToken String? @map("gcal_refresh_token") // encrypted
+  gcalEnabled      Boolean @default(false) @map("gcal_enabled")
+
+  // WhatsApp Business Cloud API (per-clinic — each clinic brings its own)
+  waPhoneNumberId String? @map("wa_phone_number_id")
+  waToken         String? @map("wa_token") // encrypted
+  waEnabled       Boolean @default(false) @map("wa_enabled")
+
+  // Branding / prompt overrides
+  promptOverride Json? @map("prompt_override") // optional system prompt customisation
+
+  // Status
+  isActive Boolean @default(true) @map("is_active")
+  plan     String  @default("trial") // trial | basic | pro
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users         ClinicUser[]
+  doctors       Doctor[]
+  services      Service[]
+  holidays      Holiday[]
+  clients       Client[]
+  appointments  Appointment[]
+  packages      Package[]
+  conversations Conversation[]
+  calls         Call[]
+  reminders     Reminder[]
+  events        AuditEvent[]
+
+  @@map("clinics")
+}
+
+// Pivot from Supabase auth.users to a clinic. One auth user can belong
+// to multiple clinics (rare but supported — e.g. group practices).
+model ClinicUser {
+  id       String @id @default(cuid())
+  clinicId String @map("clinic_id")
+  authId   String @map("auth_id") // Supabase auth.users.id (uuid)
+  email    String
+  role     String @default("staff") // owner | manager | staff | super_admin
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, authId])
+  @@index([authId])
+  @@map("clinic_users")
+}
+
+// ============================================================
+// Catalog
+// ============================================================
+
+model Doctor {
+  id          String   @id @default(cuid())
+  clinicId    String   @map("clinic_id")
+  name        String
+  nameAr      String?  @map("name_ar")
+  title       String? // "MD, OB/GYN Specialist"
+  specialties String[] // tags: ["dermatology","aesthetics"]
+  isActive    Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([clinicId, isActive])
+  @@map("doctors")
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  clinicId        String   @map("clinic_id")
+  department      String // dermatology | aesthetics | regenerative | slimming | gynecology | laser_hair_removal | ...
+  key             String // stable ML-facing identifier, e.g. "botox"
+  nameEn          String   @map("name_en")
+  nameAr          String?  @map("name_ar")
+  durationMinutes Int      @map("duration_minutes")
+  priceMinor      Int? // price in MINOR currency units (cents/baisa) — avoids float drift
+  priceUnit       String?  @map("price_unit") // "per session", "per syringe", "per area"
+  capacity        Int      @default(1) // concurrent slots in this department for this service
+  // Doctors who can perform this service. Empty = department-wide / technician
+  doctorIds       String[] @map("doctor_ids")
+  isActive        Boolean  @default(true) @map("is_active")
+  description     String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+  packages     Package[]
+
+  @@unique([clinicId, key])
+  @@index([clinicId, department])
+  @@map("services")
+}
+
+model Holiday {
+  id       String   @id @default(cuid())
+  clinicId String   @map("clinic_id")
+  date     DateTime @db.Date
+  reason   String?
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@unique([clinicId, date])
+  @@map("holidays")
+}
+
+// ============================================================
+// People
+// ============================================================
+
+model Client {
+  id       String   @id @default(cuid())
+  clinicId String   @map("clinic_id")
+  phone    String // E.164, e.g. +96812345678
+  name     String
+  language String   @default("en") // en | ar
+  notes    String?
+  tags     String[] @default([])
+
+  // Source channel — first time we heard from them
+  source Channel @default(manual)
+
+  // No-show tracking (used for risk scoring later)
+  noShowCount Int @default(0) @map("no_show_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  clinic        Clinic         @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments  Appointment[]
+  conversations Conversation[]
+  calls         Call[]
+  packages      Package[]
+
+  @@unique([clinicId, phone])
+  @@index([clinicId, name])
+  @@map("clients")
+}
+
+// ============================================================
+// Bookings
+// ============================================================
+
+enum AppointmentStatus {
+  scheduled
+  completed
+  cancelled
+  no_show
+
+  @@map("appointment_status")
+}
+
+enum Channel {
+  voice
+  whatsapp
+  instagram
+  manual
+  api
+
+  @@map("channel")
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  clinicId  String            @map("clinic_id")
+  clientId  String            @map("client_id")
+  serviceId String            @map("service_id")
+  doctorId  String?           @map("doctor_id")
+  startAt   DateTime          @map("start_at")
+  endAt     DateTime          @map("end_at")
+  status    AppointmentStatus @default(scheduled)
+  source    Channel           @default(manual)
+  notes     String?
+  packageId String?           @map("package_id")
+
+  // External sync targets — IDs the booking was mirrored into
+  gcalEventId String? @map("gcal_event_id")
+
+  // Idempotency for tool-call-driven booking
+  idempotencyKey String? @unique @map("idempotency_key")
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  cancelledAt DateTime? @map("cancelled_at")
+
+  clinic    Clinic     @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service   Service    @relation(fields: [serviceId], references: [id])
+  doctor    Doctor?    @relation(fields: [doctorId], references: [id])
+  package   Package?   @relation(fields: [packageId], references: [id])
+  reminders Reminder[]
+
+  @@index([clinicId, startAt])
+  @@index([clinicId, status, startAt])
+  @@index([clinicId, clientId, startAt])
+  @@map("appointments")
+}
+
+model Package {
+  id            String   @id @default(cuid())
+  clinicId      String   @map("clinic_id")
+  clientId      String   @map("client_id")
+  serviceId     String   @map("service_id")
+  totalSessions Int      @map("total_sessions")
+  sessionsUsed  Int      @default(0) @map("sessions_used")
+  pricePaidMinor Int     @map("price_paid_minor")
+  expiresAt     DateTime @map("expires_at")
+  isActive      Boolean  @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service      Service       @relation(fields: [serviceId], references: [id])
+  appointments Appointment[]
+
+  @@index([clinicId, clientId, isActive])
+  @@map("packages")
+}
+
+// ============================================================
+// Communication
+// ============================================================
+
+model Conversation {
+  id        String   @id @default(cuid())
+  clinicId  String   @map("clinic_id")
+  clientId  String   @map("client_id")
+  channel   Channel
+  language  String? // en | ar — locked once detected
+  lastMsgAt DateTime @default(now()) @map("last_msg_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic   Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  client   Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  messages Message[]
+
+  @@unique([clinicId, clientId, channel])
+  @@index([clinicId, lastMsgAt])
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  role           String // user | assistant | tool
+  content        Json // text or structured (tool_use / tool_result blocks)
+  toolName       String?  @map("tool_name") // shortcut for indexing tool calls
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+model Call {
+  id          String    @id @default(cuid())
+  clinicId    String    @map("clinic_id")
+  clientId    String?   @map("client_id")
+  vapiCallId  String?   @unique @map("vapi_call_id")
+  fromNumber  String    @map("from_number")
+  toNumber    String?   @map("to_number")
+  durationSec Int       @default(0) @map("duration_sec")
+  startedAt   DateTime  @default(now()) @map("started_at")
+  endedAt     DateTime? @map("ended_at")
+  transcript  Json? // Vapi-formatted transcript
+  recordingUrl String?  @map("recording_url")
+  outcome     String? // booked | cancelled | info | abandoned
+  costUsd     Decimal?  @map("cost_usd") @db.Decimal(10, 4)
+
+  clinic Clinic  @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  client Client? @relation(fields: [clientId], references: [id])
+
+  @@index([clinicId, startedAt])
+  @@map("calls")
+}
+
+// ============================================================
+// Async work
+// ============================================================
+
+enum ReminderStatus {
+  pending
+  sent
+  failed
+  cancelled
+
+  @@map("reminder_status")
+}
+
+model Reminder {
+  id            String         @id @default(cuid())
+  clinicId      String         @map("clinic_id")
+  appointmentId String         @map("appointment_id")
+  scheduledFor  DateTime       @map("scheduled_for")
+  status        ReminderStatus @default(pending)
+  channel       Channel        @default(whatsapp)
+  attempts      Int            @default(0)
+  sentAt        DateTime?      @map("sent_at")
+  errorMessage  String?        @map("error_message")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic      Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@unique([appointmentId, channel])
+  @@index([status, scheduledFor])
+  @@map("reminders")
+}
+
+// ============================================================
+// Audit / events
+// ============================================================
+
+// Lightweight event log — anything important that happens. Useful for
+// debugging tool-call sequences and giving clinic owners a paper trail.
+model AuditEvent {
+  id        String   @id @default(cuid())
+  clinicId  String   @map("clinic_id")
+  type      String // booking.created | booking.cancelled | call.completed | reminder.sent | ...
+  actor     String? // "vapi" | "whatsapp" | userId | "system"
+  payload   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  clinic Clinic @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId, type, createdAt])
+  @@map("audit_events")
+}
