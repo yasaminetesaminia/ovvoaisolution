@@ -6,5 +6,24 @@
  * keeps connection-pool usage sane in serverless environments.
  */
 
-export { prisma, type PrismaClient } from "./client.js";
-export * from "@prisma/client";
+export { prisma } from "./client.js";
+export {
+  Prisma,
+  PrismaClient,
+  type Clinic,
+  type ClinicUser,
+  type Doctor,
+  type Service,
+  type Holiday,
+  type Client,
+  type Appointment,
+  type Package,
+  type Conversation,
+  type Message,
+  type Call,
+  type Reminder,
+  type AuditEvent,
+  type AppointmentStatus,
+  type Channel,
+  type ReminderStatus,
+} from "@prisma/client";
