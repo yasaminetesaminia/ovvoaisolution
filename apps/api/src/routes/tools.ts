@@ -31,6 +31,7 @@ import {
 import { prisma } from "@lavora/db";
 
 import { logger } from "../lib/logger.js";
+import { afterBookingCancelled, afterBookingCreated } from "../lib/post-booking.js";
 import { vapiAuth } from "../middleware/vapi-auth.js";
 
 export const toolRoutes = new Hono();
@@ -46,17 +47,6 @@ interface VapiToolCall {
 
 function extractToolCalls(body: any): VapiToolCall[] {
   return body?.message?.toolCalls ?? body?.message?.tool_calls ?? [];
-}
-
-function vapiResponse(toolCallId: string, result: unknown) {
-  return {
-    results: [
-      {
-        toolCallId,
-        result: typeof result === "string" ? result : JSON.stringify(result),
-      },
-    ],
-  };
 }
 
 // ---- Single dispatcher endpoint ----
@@ -168,6 +158,13 @@ async function bookAppointment(args: unknown, ctx: ToolCtx) {
       notes: parsed.notes,
       idempotencyKey: ctx.toolCallId,
     });
+    // Fire-and-forget the calendar mirror + reminder scheduling so the
+    // Vapi tool response stays fast. Errors land in audit_events.
+    if (result.isNew) {
+      void afterBookingCreated(result.appointmentId).catch((err) =>
+        logger.error({ err, appointmentId: result.appointmentId }, "post-booking failed"),
+      );
+    }
     return {
       success: true,
       appointment_id: result.appointmentId,
@@ -196,6 +193,9 @@ async function cancelAppointment(_args: unknown, ctx: ToolCtx) {
   if (!cancelled) {
     return { success: false, message: "No upcoming appointment found for this number." };
   }
+  void afterBookingCancelled(cancelled.id).catch((err) =>
+    logger.error({ err, appointmentId: cancelled.id }, "post-cancel failed"),
+  );
   return { success: true, appointment_id: cancelled.id };
 }
 

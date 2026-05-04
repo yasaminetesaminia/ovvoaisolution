@@ -19,6 +19,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.js
 COPY apps/api/package.json ./apps/api/
 COPY packages/db/package.json ./packages/db/
 COPY packages/core/package.json ./packages/core/
+COPY packages/calendar/package.json ./packages/calendar/
+COPY packages/chat/package.json ./packages/chat/
 
 RUN pnpm install --frozen-lockfile
 

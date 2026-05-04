@@ -23,10 +23,12 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { initSentry } from "./lib/sentry.js";
 import { logger } from "./lib/logger.js";
+import { startReminderRunner } from "./lib/reminders-runner.js";
 import { healthRoutes } from "./routes/health.js";
 import { toolRoutes } from "./routes/tools.js";
 
 initSentry();
+startReminderRunner();
 
 const app = new Hono();
 

@@ -21,6 +21,4 @@ SETUP.md
 apps/web
 apps/workers
 packages/voice
-packages/chat
-packages/calendar
 packages/ai
