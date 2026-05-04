@@ -75,13 +75,29 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     voice: {
       provider: "11labs" as const,
       voiceId: clinic.voiceId,
-      model: opts.voiceModel ?? clinic.voiceModel ?? "eleven_turbo_v2_5",
-      stability: 0.7,
+      // eleven_turbo_v2_5 is the standard for live calls, but on cloned
+      // voices the multilingual_v2 model is noticeably clearer on Arabic
+      // — worth the ~400ms extra latency for a luxury-clinic demo.
+      model: opts.voiceModel ?? clinic.voiceModel ?? "eleven_multilingual_v2",
+      // 0.75 (was 0.70) trades a touch of warmth for fewer pronunciation
+      // wobbles — callers were missing the occasional word.
+      stability: 0.75,
       similarityBoost: 0.85,
       style: 0.15,
       useSpeakerBoost: true,
-      // Lower latency profile — Vapi will request streaming audio.
-      optimizeStreamingLatency: 3,
+      // 1 (was 3): minimal latency optimisation, maximum audio quality.
+      // 3 was clipping consonants on the cloned voice, especially in Arabic.
+      optimizeStreamingLatency: 1,
+      // Tiny chunk plan keeps the first audio coming fast even at quality 1.
+      // Vapi only accepts a fixed allowlist of punctuation boundaries —
+      // Arabic comma "،" is supported but Arabic ?/; are not, so we rely
+      // on the Latin equivalents (sentences in Arabic still get split on
+      // periods and Arabic comma).
+      chunkPlan: {
+        enabled: true,
+        minCharacters: 30,
+        punctuationBoundaries: [".", "!", "?", "،", ":", ";"],
+      },
     },
     // After 30s of silence, end the call gracefully.
     silenceTimeoutSeconds: 30,
