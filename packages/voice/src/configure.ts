@@ -21,6 +21,10 @@ import { VapiClient } from "./vapi.js";
 export interface SyncOptions {
   /** The /v1/tools/dispatch URL Vapi should call when the agent uses a tool. */
   webhookUrl: string;
+  /** The /v1/webhooks/vapi URL Vapi should post lifecycle events to
+   *  (status updates, end-of-call reports). Defaults to swapping the
+   *  /tools/dispatch suffix on `webhookUrl`. */
+  serverUrl?: string;
   /** Defaults to "claude-haiku-4-5-20251001" — Anthropic's fastest. */
   llmModel?: string;
   /** Override the default voice model on ElevenLabs. */
@@ -51,10 +55,17 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     );
   }
 
+  const serverUrl = opts.serverUrl
+    ?? opts.webhookUrl.replace(/\/v1\/tools\/dispatch\/?$/, "/v1/webhooks/vapi");
+
   return {
     name: clinic.name,
     firstMessage: `أهلاً فيك في عيادة لافورا. Welcome to ${clinic.name}.`,
     firstMessageMode: "assistant-speaks-first" as const,
+    // Vapi posts lifecycle events (status-update, end-of-call-report)
+    // here. Tool calls use a separate per-tool `server` field.
+    server: { url: serverUrl, timeoutSeconds: 20 },
+    serverMessages: ["status-update", "end-of-call-report"],
     // The bilingual greeting + Arabic-script prompt content benefit from
     // a multilingual transcriber. nova-3 with language=multi handles
     // Arabic + English code-switching well at sub-second latency.

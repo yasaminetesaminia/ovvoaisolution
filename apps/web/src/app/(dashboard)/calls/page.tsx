@@ -1,6 +1,7 @@
 import { format, formatDistanceToNow } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
-import { Phone } from "lucide-react";
+import { ChevronRight, Phone } from "lucide-react";
+import Link from "next/link";
 
 import { prisma } from "@lavora/db";
 
@@ -67,9 +68,12 @@ export default async function CallsPage() {
               {calls.map((c) => {
                 const minutes = Math.round((c.durationSec / 60) * 10) / 10;
                 return (
-                  <li key={c.id} className="px-5 py-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
+                  <li key={c.id}>
+                    <Link
+                      href={`/calls/${c.id}`}
+                      className="flex items-center gap-4 px-5 py-4 hover:bg-brand-50/40 transition"
+                    >
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 text-sm">
                           <span className="font-medium text-neutral-800">
                             {c.client?.name ?? c.fromNumber}
@@ -95,18 +99,9 @@ export default async function CallsPage() {
                         <div className="text-xs text-neutral-400">
                           {formatDistanceToNow(c.startedAt, { addSuffix: true })}
                         </div>
-                        {c.recordingUrl && (
-                          <a
-                            href={c.recordingUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-brand-700 hover:text-brand-800 underline mt-1 inline-block"
-                          >
-                            Recording ↗
-                          </a>
-                        )}
                       </div>
-                    </div>
+                      <ChevronRight className="w-4 h-4 text-neutral-300 shrink-0" />
+                    </Link>
                   </li>
                 );
               })}

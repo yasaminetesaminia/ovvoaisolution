@@ -26,6 +26,7 @@ import { logger } from "./lib/logger.js";
 import { startReminderRunner } from "./lib/reminders-runner.js";
 import { healthRoutes } from "./routes/health.js";
 import { toolRoutes } from "./routes/tools.js";
+import { webhookRoutes } from "./routes/webhooks.js";
 
 initSentry();
 startReminderRunner();
@@ -44,6 +45,7 @@ app.use(
 
 app.route("/v1/health", healthRoutes);
 app.route("/v1/tools", toolRoutes);
+app.route("/v1/webhooks", webhookRoutes);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 

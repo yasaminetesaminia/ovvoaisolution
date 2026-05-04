@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 
 import { prisma, type Clinic } from "@lavora/db";
 
-import { getSupabaseServer } from "./supabase/server.js";
+import { getSupabaseServer } from "./supabase/server";
 
 export async function requireUser() {
   const supabase = await getSupabaseServer();

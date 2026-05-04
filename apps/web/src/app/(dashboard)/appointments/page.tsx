@@ -5,6 +5,8 @@ import { prisma } from "@lavora/db";
 
 import { getActiveClinic } from "@/lib/auth";
 
+import { RowActions } from "./row-actions";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -73,12 +75,13 @@ export default async function AppointmentsPage() {
               <Th>Doctor</Th>
               <Th>Source</Th>
               <Th>Status</Th>
+              <Th>{""}</Th>
             </tr>
           </thead>
           <tbody>
             {upcoming.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-12 text-neutral-400 text-sm">
+                <td colSpan={7} className="text-center py-12 text-neutral-400 text-sm">
                   No upcoming appointments yet — try booking one via the voice agent.
                 </td>
               </tr>
@@ -108,6 +111,9 @@ export default async function AppointmentsPage() {
                   </Td>
                   <Td>
                     <Pill className={STATUS_STYLE[a.status] ?? ""}>{a.status}</Pill>
+                  </Td>
+                  <Td>
+                    <RowActions appointmentId={a.id} />
                   </Td>
                 </tr>
               ))
