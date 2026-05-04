@@ -1,11 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { getSupabaseBrowser } from "@/lib/supabase/client";
 
+// Next 15 requires useSearchParams() to live inside a Suspense
+// boundary so the static prerender has a fallback. We split the form
+// into an inner component for that reason; the outer page just supplies
+// the boundary.
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/appointments";
