@@ -17,6 +17,10 @@ build/
 
 # Logs
 *.log
+web.log
+web.err.log
+api.log
+api.err.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
