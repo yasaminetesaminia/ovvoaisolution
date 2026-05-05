@@ -66,15 +66,17 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     // here. Tool calls use a separate per-tool `server` field.
     server: { url: serverUrl, timeoutSeconds: 20 },
     serverMessages: ["status-update", "end-of-call-report"],
-    // Transcriber: live-call testing showed Deepgram nova-3 + multi
-    // would silently snap to English on Arabic-speaking callers.
-    // ElevenLabs Scribe v1 was trained heavily on Arabic dialects
-    // (including Khaleeji) and handles Arabic↔English code-switching
-    // far more reliably on phone audio. Comparable latency.
+    // Transcriber: tried ElevenLabs Scribe for better Arabic, but the
+    // tenant's ElevenLabs key is provisioned with TTS-only permissions
+    // (no Speech-to-Text scope) and the call dropped after greeting
+    // because Scribe 401'd silently. Back to Deepgram nova-3 multi —
+    // the proven working baseline. To re-enable Scribe later, regen
+    // the EL key with "Speech to Text: Access" turned on.
     transcriber: {
-      provider: "11labs" as const,
-      model: "scribe_v1",
-      language: "ar",
+      provider: "deepgram" as const,
+      model: "nova-3",
+      language: "multi",
+      smartFormat: true,
     },
     model: {
       provider: "anthropic" as const,
