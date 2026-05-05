@@ -21,11 +21,19 @@ const config: NextConfig = {
   // apps/web doesn't transitively include .pnpm/.prisma/client and
   // Prisma 500s with "Could not locate the Query Engine for runtime
   // rhel-openssl-3.0.x" on first request.
+  //
+  // Globs are relative to the *app* directory (apps/web), so we step
+  // up to the monorepo root with ../../ to reach the hoisted pnpm
+  // store. Listing both `*` and `**` for the version hash because
+  // Next's micromatch treats them subtly differently.
   outputFileTracingIncludes: {
     "/**/*": [
-      "./node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**/*",
-      "./node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client/**/*",
-      "./node_modules/.pnpm/@prisma+engines@*/node_modules/@prisma/engines/**/*",
+      "../../node_modules/.pnpm/@prisma+client@**/node_modules/.prisma/client/**/*",
+      "../../node_modules/.pnpm/@prisma+client@**/node_modules/@prisma/client/**/*",
+      "../../node_modules/.pnpm/@prisma+engines@**/node_modules/@prisma/engines/**/*",
+      "../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**/*",
+      "../../node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client/**/*",
+      "../../node_modules/.pnpm/@prisma+engines@*/node_modules/@prisma/engines/**/*",
     ],
   },
   webpack: (cfg) => {

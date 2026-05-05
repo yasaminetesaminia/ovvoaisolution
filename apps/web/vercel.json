@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "cd ../.. && pnpm --filter @lavora/db exec prisma generate && pnpm --filter @lavora/web build",
+  "buildCommand": "cd ../.. && pnpm --filter @lavora/db exec prisma generate && cp -r node_modules/.pnpm/@prisma+client@*/node_modules/.prisma apps/web/ && pnpm --filter @lavora/web build",
   "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
   "outputDirectory": ".next"
 }
