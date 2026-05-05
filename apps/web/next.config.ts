@@ -3,6 +3,12 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   // Workspace packages have TS sources, not built JS — let Next compile them.
   transpilePackages: ["@lavora/db", "@lavora/core"],
+  // Don't try to webpack-bundle Prisma's native engine into the
+  // serverless function — Vercel's tracer will pick the binaries up
+  // from node_modules at deploy time. Bundling them silently strips
+  // the .node binary and the function 500s on first DB query with
+  // "Application error" + a generic digest.
+  serverExternalPackages: ["@prisma/client", "@prisma/engines", ".prisma/client"],
   experimental: {
     serverActions: { bodySizeLimit: "2mb" },
   },
