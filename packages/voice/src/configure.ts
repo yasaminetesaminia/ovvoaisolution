@@ -66,14 +66,15 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     // here. Tool calls use a separate per-tool `server` field.
     server: { url: serverUrl, timeoutSeconds: 20 },
     serverMessages: ["status-update", "end-of-call-report"],
-    // The bilingual greeting + Arabic-script prompt content benefit from
-    // a multilingual transcriber. nova-3 with language=multi handles
-    // Arabic + English code-switching well at sub-second latency.
+    // Transcriber: live-call testing showed Deepgram nova-3 + multi
+    // would silently snap to English on Arabic-speaking callers.
+    // ElevenLabs Scribe v1 was trained heavily on Arabic dialects
+    // (including Khaleeji) and handles Arabic↔English code-switching
+    // far more reliably on phone audio. Comparable latency.
     transcriber: {
-      provider: "deepgram" as const,
-      model: "nova-3",
-      language: "multi",
-      smartFormat: true,
+      provider: "11labs" as const,
+      model: "scribe_v1",
+      language: "ar",
     },
     model: {
       provider: "anthropic" as const,
