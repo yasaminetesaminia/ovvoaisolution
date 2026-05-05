@@ -26,4 +26,4 @@ export {
   type AppointmentStatus,
   type Channel,
   type ReminderStatus,
-} from "@prisma/client";
+} from "../prisma-client/index.js";

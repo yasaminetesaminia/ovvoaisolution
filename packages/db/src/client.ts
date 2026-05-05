@@ -7,7 +7,7 @@
  * Caching on `globalThis` survives module re-evaluation.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../prisma-client/index.js";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;

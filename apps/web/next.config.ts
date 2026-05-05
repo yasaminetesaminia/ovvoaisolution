@@ -16,25 +16,13 @@ const config: NextConfig = {
   // Trace from the monorepo root so Vercel can see pnpm's hoisted
   // node_modules/.pnpm/* layout.
   outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
-  // Force Vercel to ship Prisma's generated client + native query
-  // engines into the serverless function. Without this, our cwd of
-  // apps/web doesn't transitively include .pnpm/.prisma/client and
-  // Prisma 500s with "Could not locate the Query Engine for runtime
-  // rhel-openssl-3.0.x" on first request.
-  //
-  // Globs are relative to the *app* directory (apps/web), so we step
-  // up to the monorepo root with ../../ to reach the hoisted pnpm
-  // store. Listing both `*` and `**` for the version hash because
-  // Next's micromatch treats them subtly differently.
+  // Prisma now generates into packages/db/prisma-client/ (a stable
+  // path inside the monorepo source tree, not pnpm's hashed store).
+  // Tell Vercel's tracer to ship that whole directory — JS, type
+  // declarations, AND the native .so.node engines — into the
+  // serverless function. With the path fixed, the glob is trivial.
   outputFileTracingIncludes: {
-    "/**/*": [
-      "../../node_modules/.pnpm/@prisma+client@**/node_modules/.prisma/client/**/*",
-      "../../node_modules/.pnpm/@prisma+client@**/node_modules/@prisma/client/**/*",
-      "../../node_modules/.pnpm/@prisma+engines@**/node_modules/@prisma/engines/**/*",
-      "../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**/*",
-      "../../node_modules/.pnpm/@prisma+client@*/node_modules/@prisma/client/**/*",
-      "../../node_modules/.pnpm/@prisma+engines@*/node_modules/@prisma/engines/**/*",
-    ],
+    "/**/*": ["../../packages/db/prisma-client/**/*"],
   },
   webpack: (cfg) => {
     // Our workspace packages use Node's ESM convention of writing

@@ -10,6 +10,11 @@
 
 generator client {
   provider      = "prisma-client-js"
+  // Custom output puts the generated client + native engine inside
+  // packages/db's source tree (not pnpm's hoisted node_modules). With
+  // a stable absolute path Vercel's file-tracing reliably includes the
+  // .so.node binaries — no monorepo + pnpm + Vercel guesswork.
+  output        = "../prisma-client"
   binaryTargets = ["native", "rhel-openssl-3.0.x", "linux-musl"]
 }
 
