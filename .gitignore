@@ -38,6 +38,7 @@ Thumbs.db
 packages/db/prisma/migrations/dev/
 packages/db/.prisma
 packages/db/prisma-client
+apps/web/prisma-client
 
 # Supabase
 supabase/.temp

@@ -16,13 +16,17 @@ const config: NextConfig = {
   // Trace from the monorepo root so Vercel can see pnpm's hoisted
   // node_modules/.pnpm/* layout.
   outputFileTracingRoot: path.resolve(process.cwd(), "../.."),
-  // Prisma now generates into packages/db/prisma-client/ (a stable
-  // path inside the monorepo source tree, not pnpm's hashed store).
-  // Tell Vercel's tracer to ship that whole directory — JS, type
-  // declarations, AND the native .so.node engines — into the
-  // serverless function. With the path fixed, the glob is trivial.
+  // Prisma generates into packages/db/prisma-client/ then the Vercel
+  // build command copies it into apps/web/prisma-client/ — that's the
+  // path the bundled @lavora/db client searches at runtime
+  // (/var/task/apps/web/prisma-client in serverless). We trace BOTH
+  // locations so file-inclusion works whether Vercel walks from the
+  // app dir or the workspace root.
   outputFileTracingIncludes: {
-    "/**/*": ["../../packages/db/prisma-client/**/*"],
+    "/**/*": [
+      "./prisma-client/**/*",
+      "../../packages/db/prisma-client/**/*",
+    ],
   },
   webpack: (cfg) => {
     // Our workspace packages use Node's ESM convention of writing
