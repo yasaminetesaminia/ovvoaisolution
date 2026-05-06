@@ -9,8 +9,8 @@ import { getSupabaseBrowser } from "@/lib/supabase/client";
 const NAV: Array<{ href: string; label: string; icon: any; ready: boolean }> = [
   { href: "/appointments", label: "Appointments", icon: Calendar, ready: true },
   { href: "/calls", label: "Calls", icon: Phone, ready: true },
-  { href: "/clients", label: "Clients", icon: Users, ready: false },
-  { href: "/settings", label: "Settings", icon: Settings, ready: false },
+  { href: "/clients", label: "Clients", icon: Users, ready: true },
+  { href: "/settings", label: "Settings", icon: Settings, ready: true },
 ];
 
 export function Sidebar({ email }: { email: string | null }) {
