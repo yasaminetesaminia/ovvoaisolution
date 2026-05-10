@@ -66,21 +66,19 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     // here. Tool calls use a separate per-tool `server` field.
     server: { url: serverUrl, timeoutSeconds: 20 },
     serverMessages: ["status-update", "end-of-call-report"],
-    // Transcriber: Deepgram via Vapi doesn't expose Arabic on either
-    // nova-2 or nova-3 (their language allowlists for those models
-    // skip "ar"). The only Arabic-capable Deepgram model on Vapi is
-    // whisper-large, which is what we use here. whisper rejects the
-    // `keywords` parameter — passing it crashed the pipeline with
-    // `pipeline-error-deepgram-transcriber-failed` and dropped every
-    // call. Keeping the config minimal accordingly.
-    //
-    // Production Lavora is in Muscat → Arabic is the dominant language.
-    // English callers can switch by explicitly saying "English please"
-    // and the LLM is instructed to detect that pattern even from a
-    // partially garbled Arabic transcript.
+    // Transcriber: ElevenLabs Scribe v1. After living through Vapi's
+    // Deepgram limitations on Arabic (nova-* don't accept ar; whisper-
+    // large drops keyword boost; multi is English-biased on phone audio)
+    // we moved to Scribe — trained heavily on Arabic dialects (incl.
+    // Khaleeji) and handles Arabic↔English code-switching live.
+    // Requires the EL key to carry Speech-to-Text scope; the tenant's
+    // current key (Restrict Key=Off) does.
     transcriber: {
-      provider: "deepgram" as const,
-      model: "whisper-large",
+      provider: "11labs" as const,
+      model: "scribe_v1",
+      // language="ar" primes the model toward Arabic but Scribe is
+      // multilingual under the hood — it still transcribes English
+      // utterances correctly when callers code-switch.
       language: "ar",
     },
     model: {
