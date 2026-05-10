@@ -27,6 +27,7 @@ import { startRecordingsCleanup } from "./lib/recordings-cleanup.js";
 import { startReminderRunner } from "./lib/reminders-runner.js";
 import { healthRoutes } from "./routes/health.js";
 import { toolRoutes } from "./routes/tools.js";
+import { whatsappRoutes } from "./routes/webhooks-whatsapp.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 
 initSentry();
@@ -48,6 +49,7 @@ app.use(
 app.route("/v1/health", healthRoutes);
 app.route("/v1/tools", toolRoutes);
 app.route("/v1/webhooks", webhookRoutes);
+app.route("/v1/webhooks", whatsappRoutes);
 
 app.notFound((c) => c.json({ error: "not_found" }, 404));
 

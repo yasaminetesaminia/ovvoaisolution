@@ -12,6 +12,8 @@
 
 import type { Clinic } from "@lavora/db";
 
+export { buildChatSystemPrompt, type ChatPromptInput } from "./prompt.js";
+
 const GRAPH_BASE = "https://graph.facebook.com/v21.0";
 
 export interface SendTextOpts {
