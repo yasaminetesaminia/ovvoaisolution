@@ -83,15 +83,14 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     },
     model: {
       provider: "anthropic" as const,
-      // Sonnet 4.6 follows the anti-hallucination rules far more
-      // strictly than Haiku — Haiku was occasionally announcing
-      // bookings without calling book_appointment first. The extra
-      // ~400ms per turn is acceptable for a luxury demo.
-      model: opts.llmModel ?? "claude-sonnet-4-6",
-      // Lower temperature → less "creative" interpretation of the
-      // tool-use rules. We want literal compliance, not riffing.
+      // Haiku 4.5 over Sonnet 4.6 for live phone latency: live tests
+      // showed Sonnet adding 1.5–3s per turn — long enough that
+      // callers thought the line was lagging. The mechanical 7-step
+      // booking sequence in the prompt + temperature 0.2 + maxTokens
+      // 200 keeps Haiku tight on rule adherence.
+      model: opts.llmModel ?? "claude-haiku-4-5-20251001",
       temperature: 0.2,
-      maxTokens: 250,
+      maxTokens: 200,
       messages: [{ role: "system", content: systemPrompt }],
       tools,
     },
@@ -108,19 +107,15 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
       similarityBoost: 0.85,
       style: 0.15,
       useSpeakerBoost: true,
-      // 1 (was 3): minimal latency optimisation, maximum audio quality.
-      // 3 was clipping consonants on the cloned voice, especially in Arabic.
-      optimizeStreamingLatency: 1,
-      // Tiny chunk plan keeps the first audio coming fast even at quality 1.
-      // Vapi only accepts a fixed allowlist of punctuation boundaries —
-      // Arabic comma "،" is supported but Arabic ?/; are not, so we rely
-      // on the Latin equivalents (sentences in Arabic still get split on
-      // periods and Arabic comma).
-      chunkPlan: {
-        enabled: true,
-        minCharacters: 30,
-        punctuationBoundaries: [".", "!", "?", "،", ":", ";"],
-      },
+      // optimizeStreamingLatency: 2 trades a bit of audio polish for
+      // a noticeable first-byte cut. Level 1 was clearer in isolation
+      // but combined with chunkPlan it produced audible "stitching"
+      // between chunks; we just removed chunkPlan, so 2 is the sweet
+      // spot now (clearer than 3, ~150ms faster than 1).
+      optimizeStreamingLatency: 2,
+      // No chunkPlan — sending whole sentences to TTS at once gives
+      // smoother prosody. Slightly higher first-syllable latency on
+      // long replies, but the prompt already keeps replies short.
     },
     // After 30s of silence, end the call gracefully.
     silenceTimeoutSeconds: 30,
