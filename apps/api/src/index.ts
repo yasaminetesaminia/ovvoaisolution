@@ -23,6 +23,7 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { initSentry } from "./lib/sentry.js";
 import { logger } from "./lib/logger.js";
+import { startRecordingsCleanup } from "./lib/recordings-cleanup.js";
 import { startReminderRunner } from "./lib/reminders-runner.js";
 import { healthRoutes } from "./routes/health.js";
 import { toolRoutes } from "./routes/tools.js";
@@ -30,6 +31,7 @@ import { webhookRoutes } from "./routes/webhooks.js";
 
 initSentry();
 startReminderRunner();
+startRecordingsCleanup();
 
 const app = new Hono();
 
