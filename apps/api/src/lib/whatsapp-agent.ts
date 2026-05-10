@@ -26,7 +26,11 @@ import { ANTHROPIC_TOOLS, dispatchTool } from "./tool-handlers.js";
 
 const MAX_HISTORY = 30;
 const MAX_ITERS = 6;
-const MODEL = process.env.ANTHROPIC_CHAT_MODEL ?? "claude-haiku-4-5-20251001";
+// Sonnet 4.6 (matches the voice agent) — Haiku at default temperature
+// kept hallucinating weekdays even with today's date injected into the
+// prompt. Sonnet at temp 0.2 follows the date+weekday context literally.
+const MODEL = process.env.ANTHROPIC_CHAT_MODEL ?? "claude-sonnet-4-6";
+const TEMPERATURE = 0.2;
 
 let _client: Anthropic | null = null;
 function getAnthropic(): Anthropic {
@@ -133,6 +137,7 @@ export async function runChat(opts: RunChatOpts): Promise<RunChatResult> {
   let response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: 800,
+    temperature: TEMPERATURE,
     system: systemPrompt,
     tools: ANTHROPIC_TOOLS as any,
     messages,
