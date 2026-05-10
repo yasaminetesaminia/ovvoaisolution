@@ -66,38 +66,22 @@ export async function buildAssistantConfig(clinicId: string, opts: SyncOptions) 
     // here. Tool calls use a separate per-tool `server` field.
     server: { url: serverUrl, timeoutSeconds: 20 },
     serverMessages: ["status-update", "end-of-call-report"],
-    // Transcriber: production Lavora is in Muscat — most callers speak
-    // Arabic. We tried multi-language Deepgram models (nova-3, whisper)
-    // but both have a strong English bias on phone audio and dropped
-    // Arabic utterances. Forcing language="ar" with whisper-large
-    // gives reliable Arabic recall; English callers can switch by
-    // explicitly saying "English please" (the LLM is instructed to
-    // detect that pattern even in garbled Arabic transcript).
+    // Transcriber: Deepgram via Vapi doesn't expose Arabic on either
+    // nova-2 or nova-3 (their language allowlists for those models
+    // skip "ar"). The only Arabic-capable Deepgram model on Vapi is
+    // whisper-large, which is what we use here. whisper rejects the
+    // `keywords` parameter — passing it crashed the pipeline with
+    // `pipeline-error-deepgram-transcriber-failed` and dropped every
+    // call. Keeping the config minimal accordingly.
     //
-    // ElevenLabs Scribe v1 would be the bilingual gold standard but
-    // requires the EL key to carry "Speech to Text" scope, which the
-    // tenant's current key lacks.
+    // Production Lavora is in Muscat → Arabic is the dominant language.
+    // English callers can switch by explicitly saying "English please"
+    // and the LLM is instructed to detect that pattern even from a
+    // partially garbled Arabic transcript.
     transcriber: {
       provider: "deepgram" as const,
       model: "whisper-large",
       language: "ar",
-      smartFormat: true,
-      keywords: [
-        // Boost recall on the Arabic terms the agent hears constantly.
-        "بوتوكس:2",
-        "فيلر:2",
-        "ليزر:2",
-        "بكيني:2",
-        "موعد:2",
-        "حجز:2",
-        "بكرة:2",
-        "السبت:2",
-        "الأحد:2",
-        "الإثنين:2",
-        "الثلاثاء:2",
-        "الأربعاء:2",
-        "الخميس:2",
-      ],
     },
     model: {
       provider: "anthropic" as const,
